@@ -1,0 +1,617 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="fr" lang="fr" dir="ltr">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Debian on the MacBookPro8,2</title>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+
+<body>
+
+<p style="text-align: center;"><img src="mbp82.jpg" alt="MBP82" /></p>
+
+
+<h1>Debian on the MacBookPro8,2 (late 2011)</h1>
+
+<h2>About</h2>
+
+<p>This page is a writeup about my experience in setting up <a href="http://debian.org/">Debian</a> <strong>GNU/Linux</strong>
+on the <strong>MacBookPro8,2</strong> (late 2011 edition), in pure <a href="https://help.ubuntu.com/community/UEFIBooting">EFI booting</a> fashion.</p>
+
+<p>While it certainly does not aim at being an exhaustive documentation on how to
+perform that, I'll be happy to receive feedback, corrections and tips to make
+the experience better for libre software enthusiasts using this very hardware.</p>
+
+<p>I will <em>try</em> to update this page as I go. So, please, if you see something
+wrongly documented or know how to solve an issue or two, <a href="mailto:fluorATpoivronDOTorg">drop me a mail</a>!</p>
+
+<h2>MBP82 models</h2>
+
+<p>Bear in mind there's various versions of the MacBookPro8,2 2011 out there.
+Apart from different RAM/video options, the line was <a href="http://www.macrumors.com/2011/10/24/apple-bumps-macbook-pro-with-processor-graphics-storage-upgrades/">slightly refreshed</a> end
+of October 2011. While this move seems to have mostly (if not exclusively)
+brought a speedbump for CPU, GPU &amp; storage, there may be other differences, in
+hardware and/or firmware, that may lead to different results when trying to
+reproduce these steps on early 2011 MBP82 machines.</p>
+
+<p>So, just so we're clear, the laptop I carried this install on is a <strong>late
+2011</strong> <a href="https://en.wikipedia.org/wiki/Macbookpro">MacBookPro</a> 15", with the following options :</p>
+
+<ul>
+<li><em>display:</em> hi-res glossy 15"</li>
+<li><em>RAM:</em> 8GB</li>
+<li><em>CPU:</em> Intel core i7 @ 2.20GHz</li>
+<li><em>GPU:</em> AMD Radeon HD 6750M with 512MB of GDDR5 + Intel HD Graphics 3000 </li>
+</ul>
+
+<p>I also switched the internal SATA2 500GB HDD (5400rpm, so slow) with a SATA3
+240GB SSD (very fast), but that should not affect your ability to install. Due
+to the <a href="http://www.ocztechnologyforum.com/forum/showthread.php?89970-A-call-to-all-Macbook-Pro-2011-Users-with-SATA3-Issues">numerous problems</a> that this series of machines has had to run SATA3
+disks at full speed though, I feel it's important to mention that it works fine
+for me.</p>
+
+<h2>Pre-install</h2>
+
+<p>The laptop comes with <a href="https://en.wikipedia.org/wiki/Macos_x">MacOS X</a> installed. I advise you <em>not</em> to get rid of it,
+for it is the only way to carry <a href="https://support.apple.com/kb/HT1237">EFI &amp; SMC firmware updates</a> (which sometimes
+bring fixes &amp; improvements). </p>
+
+<p><strong>Note:</strong> if you laptop shipped with OS X <a href="https://en.wikipedia.org/wiki/Macos_x#Version_10.7:_.22Lion.22">Lion</a> like mine did, I advise you to create a USB <a href="https://support.apple.com/kb/HT4848">Lion Recovery Disk Assistant</a>.</p>
+
+<p><strong>Warning:</strong> if you're planning to use <a href="https://en.wikipedia.org/wiki/Macos_x">MacOS X</a> on an external USB drive, for
+instance, in order to dedicate the internal disk to <a href="http://debian.org/">Debian</a> only, you will be
+able to run <a href="https://en.wikipedia.org/wiki/Macos_x">MacOS X</a>, but it won't allow <a href="https://support.apple.com/kb/HT1237">EFI &amp; SMC firmware updates</a> to be
+carried, unfortunately.</p>
+
+<p>Of course, <a href="https://en.wikipedia.org/wiki/Macos_x">MacOS X</a> spans the entire disk by default, so we need to shrink its
+partition. To do so, You can either use <code>diskutil</code> from the command-line, or the
+graphical Partition Manager which you'll find in <code>Applications/Utilities</code>.</p>
+
+<p>Because Intel Macs use modern <a href="https://en.wikipedia.org/wiki/GUID_Partition_Table">GPT partitionning</a> instead of the traditionnal
+DOS style partitionning, <a href="http://www.rodsbooks.com/gdisk/">GPT fdisk</a> is a tool of choice to partition the empty
+space. It is available both for GNU/Linux and <a href="https://en.wikipedia.org/wiki/Macos_x">MacOS X</a>. However, I found that
+it wouldn't rename partitions under <a href="https://en.wikipedia.org/wiki/Macos_x#Version_10.7:_.22Lion.22">Lion</a>, so I used it within the Ubuntu
+installer instead.</p>
+
+<h2>Booting the installation media</h2>
+
+<p>Intel Macs use a proprietary variant of <a href="https://en.wikipedia.org/wiki/Extensible_Firmware_Interface">UEFI</a>, not <a href="https://en.wikipedia.org/wiki/BIOS">BIOS</a>, though they can be
+booted in BIOS emulation mode. The easiest solution to install GNU/Linux on
+these machines is to install using an CD or DVD (given EFI firmware
+restrictions on booting legacy USB devices). However, this proves to be very
+difficult to do when booting the MacBookPro8,2 in BIOS emulation mode, for the
+kernel fails to see the CD-ROM device after it booted. You can then mount a USB
+key containing the installer components, or... boot directly in EFI mode and
+setup a native EFI system, which is what I did and what I will document further.</p>
+
+<p>Note that the late 2011 model is believed to be incapable of booting grub in
+BIOS emulation mode due to new firmware restrictions, and that EFI may be the
+only way to go. Here's some chat from the <em>##apple</em> IRC channel on <a href="http://freenode.net/">Freenode</a>,
+on <em>November 18th 2011</em>. I sure can't confirm it's true, though I can testify
+that I've been unable to boot in BIOS emulation mode from a <a href="https://en.wikipedia.org/wiki/BIOS_Boot_partition">BIOS boot
+partition</a>:</p>
+
+<pre><code>18:23 &lt;Branes&gt; Apple changed the UEFI structure with the newest MacBook Pro's and the latest 
+               iMac refresh.
+18:23 &lt;Branes&gt; As such, neither rEFIt nor grub (nor grub+) will work.
+18:25 &lt;Branes&gt; The change is a little over five weeks old.
+18:26 &lt;Branes&gt; Until the rEFIt people wake up and fix the limitation, it won't work at all 
+               with the newest EFI firmware that's been shipping in all machines for just over 
+       a month.
+18:26 &lt;Branes&gt; rf you just bought it, then it has the new UEFI structure.
+18:28 &lt;Branes&gt; Apple use 'Protected GPT' which is a dogs' breakfast.
+18:30 &lt;Branes&gt; The main problem with pGPT is twofold: 1) no linux loader knows how to deal 
+               with it, and 2) it is no better than MBR in that you are limited to four 
+       partitions ... and Apple already use three, one for EFI, one for the main OSX volume, 
+       and a third for the Recovery partition.
+18:34 &lt;Branes&gt; Best be thankful, then, that you bought a new machine now, and not in four 
+               months :)
+18:35 &lt;klausa&gt; What will they change in 4 months ;)?
+18:35 &lt;Branes&gt; klausa: They adopt the changes to UEFI proposed by Microsoft.
+18:35 &lt;Branes&gt; Machines then will *only* be able to boot Mac OS X, iOS Desktop, or 
+               Windows 7 -- the hardware will not aloow any other OS.
+</code></pre>
+
+<p>Some of that info is at least partially wrong, since I'm writing this from
+<a href="http://debian.org/">Debian</a> on the previously mentionned laptop, which now has 6 GPT partitions,
+and I did install <a href="http://refit.sf.net/">rEFIt</a> with no issue, as far as <a href="https://help.ubuntu.com/community/UEFIBooting">EFI booting</a> is concerned...</p>
+
+<p>Anyways, since <a href="http://debian.org/">Debian</a> has no support (yet) for <a href="https://help.ubuntu.com/community/UEFIBooting">EFI booting</a> an installation
+media (to my knowledge), I used <a href="http://ubuntu.com/">Ubuntu</a> Oneiric's <a href="http://www.ubuntu.com/download/ubuntu/alternative-download">alternate installer</a>, which
+is basically the <a href="http://www.debian.org/devel/debian-installer/">Debian installer</a> with a few things changed, like the ability
+to boot in EFI mode and provide the user with a familiar Debian-based
+environment.</p>
+
+<h2>Pure EFI vs BIOS emulation</h2>
+
+<p>Like I said, I'm not sure there's much choice on the specific <a href="https://en.wikipedia.org/wiki/Macbookpro">MacBookPro</a> model I'm talking about, but please prove me wrong (it's possible to boot in BIOS emulation from a CD, for instance, but you'll most probably need the kernel to be <a href="https://bugs.launchpad.net/ubuntu/+source/linux/+bug/782389">patched</a> to see the CD drive).</p>
+
+<p>In any case, there's benefits to booting in pure EFI over BIOS emulation:</p>
+
+<ul>
+<li>it allows the kernel to see and use the IGD (Integrated Graphics Device), while BIOS emulation only sees the discrete graphics card (the power-hungry and noisy ATI card);</li>
+<li>the SATA controller is initialized by the AHCI driver (as it should), whereas it is <em>not</em> in BIOS emulation mode (though there are <a href="http://ubuntuforums.org/showpost.php?p=10685211&amp;postcount=230">some PCI/AHCI patches</a> for that), reducing in degraded performance;</li>
+<li>no dependency upon the buggy BIOS emulation layer provided by Apple, kernels sees the hardware directly;</li>
+<li>booting is faster;</li>
+</ul>
+
+<p>There's some drawbacks too:</p>
+
+<ul>
+<li>it's a little more complicated to setup and debug <em>well</em>;</li>
+<li>some drivers depend upon information provided by a legacy BIOS and just won't work as a result, and as of this writing, there doesn't seem to be a workaround for everything yet;</li>
+</ul>
+
+<h2>Installing</h2>
+
+<p>So, boot in EFI mode using Oneiric's <a href="http://www.ubuntu.com/download/ubuntu/alternative-download">alternate installer</a>, configure the
+basics (keyboard, lang, etc.) and when you reach partman, drop to a shell. I
+then used <code>gdisk</code> to create my partitions (/boot &amp; another for <em>dm-crypt</em> /).
+Luckily, it comes pre-installed on the alternate CD.</p>
+
+<p>I carried the rest of the install manually, by using:</p>
+
+<ul>
+<li><a href="https://code.google.com/p/cryptsetup/wiki/FrequentlyAskedQuestions">cryptsetup</a> to create an encrypted container (who wants to store his/her
+information unencrypted nowaydays?), and <a href="https://en.wikipedia.org/wiki/Logical_Volume_Manager_%28Linux%29">lvm</a> to make it a
+<em>physical volume</em>, create a <em>volume group</em> on it and then deploy <em>logical
+volumes</em> for <em>swap</em> and <em>root</em>.</li>
+<li><a href="http://wiki.debian.org/Debootstrap">debootstrap</a> to install <a href="http://www.debian.org/releases/testing/">Debian testing</a> (<em>wheezy</em>) onto the mounted root partition.</li>
+</ul>
+
+<p>I won't go into details on how to install a system using the wonderful
+<a href="http://wiki.debian.org/Debootstrap">debootstrap</a>, as it is documented <a href="http://www.debian.org/releases/stable/amd64/apds03.html">elsewhere</a> on the net. You can retrace most
+of my steps by reading the relevant sections of my previous <a href="http://dentifrice.poivron.org/laptops/macbookair3,1/">tutorial on how to
+install Debian on a MacBookAir3,1</a>. A few things have changed (<a href="https://wiki.archlinux.org/index.php/Solid_State_Drives#Partition_Alignment">partition alignment</a> should now be automatic due to the use of more recent tools, as far as I know), but it
+mostly remains the same.</p>
+
+<p>The two things you need to do to achieve a successful <a href="https://help.ubuntu.com/community/UEFIBooting">EFI booting</a> <em>before</em>
+exiting the installer are:</p>
+
+<ul>
+<li>compiling a <a href="http://kernel.org/">Linux kernel</a> with the right patches;</li>
+<li>creating a <a href="https://www.gnu.org/software/grub/">grub</a> EFI binary and matching grub.cfg;</li>
+</ul>
+
+<h2>GPU options</h2>
+
+<p>As previously mentionned, the MBP82 has two GPUs:</p>
+
+<ul>
+<li><strong>IGD:</strong> a low-power intel HD, using driver <em>i915</em>;</li>
+<li><strong>Discrete:</strong> a power hungry but more powerful ATI, using driver <em>radeon</em>;</li>
+</ul>
+
+<p>If you want a laptop that doesn't have a fan blowing on a permanent basis, and
+whose battery lasts as long as possible, you'll want to disable the ATI card
+and use the intel IGD.</p>
+
+<p>Unfortunately, it's not a piece of cake:</p>
+
+<ul>
+<li>when booting, <a href="http://www.mjmwired.net/kernel/Documentation/fb/efifb.txt">efifb</a> takes care of the display until <a href="http://wiki.debian.org/KernelModesetting">Kernel Mode Settings</a> have the relevant video driver take over; problem is: <a href="http://www.mjmwired.net/kernel/Documentation/fb/efifb.txt">efifb</a>'s output is corrupt on this machine, and renders nothing but pixel snow; if you chose a cryptsetup config like I did, this means you'll have to type your passphrase blindly by default (fortunately, there's a workaround, see below);</li>
+<li>booting with both cards on requires a combination of patches and kernel boot options passed through <a href="https://www.gnu.org/software/grub/">grub</a>, and finding the right one is very tricky; most of the time, it results in kernel panics and/or hangs;</li>
+<li>the <strong>i915</strong> driver requires a patch activating dual LVDS channels, otherwise it will show nothing but a black screen;</li>
+<li>the ATI card must be de-activated as soon as possible for the i915 to take
+over, which is best done in <a href="https://www.gnu.org/software/grub/">grub</a> thanks to some <a href="http://ubuntuforums.org/showpost.php?p=11094634&amp;postcount=536">magic gmux values</a> ;)</li>
+</ul>
+
+<p>As a result, the only viable <strong>solution</strong> I found was to:</p>
+
+<ul>
+<li>shut the ATI card down on boot;</li>
+<li>patch <strong>i915</strong> (note there seems to be an alternative involving <a href="http://ubuntuforums.org/showpost.php?p=11198339&amp;postcount=605">patching grub2</a>, but I'm not sure anyone got it working in the end);</li>
+<li>compile the intel DRM driver <em>into the kernel</em> (it is compiled as a module by default) and <strong>remove</strong> <a href="http://www.mjmwired.net/kernel/Documentation/fb/efifb.txt">efifb</a>, so <strong>inteldrmfb</strong> gets loaded as soon as possible and we get an early console to, say, <em>not</em> type our passphrase in the dark;</li>
+</ul>
+
+<p>Or, you can do the contrary, and boot using the <a href="https://help.ubuntu.com/community/RadeonDriver">radeon driver</a>. To do so properly, you will need a few more things:</p>
+
+<ul>
+<li><p>you'll need to boot in BIOS emulation mode and dump useful bits of the memory so the GPU has access to them in EFI mode when there's no BIOS to ask such things; to do so, I booted in BIOS emulation mode using the same Ubuntu <a href="http://www.ubuntu.com/download/ubuntu/alternative-download">alternate installer</a>, dropped to a shell as soon as possible (you can't get very far anyways, for the CD drive fails to be detected after booting), mounted my boot partition, and issued the following commands:</p>
+
+<pre><code>  dd if=/dev/mem of=/boot/vbios.bin bs=65536 skip=12 count=1
+  dd if=/dev/mem of=/boot/int10.bin bs=4 skip=16 count=1
+</code></pre></li>
+<li><p>you'll need a <a href="https://bugs.freedesktop.org/show_bug.cgi?id=26891">radeon bios kernel patch</a> that allows to load <code>vbios.bin</code> from the kernel at bootup, in addition to some non-free firmware (which you can get through the <a href="http://packages.debian.org/wheezy/firmware-linux-nonfree">firmware-linux-nonfree</a> package in Debian);</p></li>
+<li>you'll need to compile the <a href="https://help.ubuntu.com/community/RadeonDriver">radeon driver</a>, framebuffer, as well as extra firmware blobs —  namely the <code>/lib/firmware/radeon/TURKS*</code> files, as well as <code>vbios.bin</code> which you will have copied to this location — into the kernel;</li>
+</ul>
+
+<p>There should be a third option, though I couldn't get it to work properly, that
+involves applying <a href="http://ubuntuforums.org/showpost.php?p=10848581&amp;postcount=456">another patch</a> on top of the two previously mentionned ones,
+enabling dynamic graphic switching using the <a href="https://help.ubuntu.com/community/HybridGraphics">vga_switcheroo</a> mecanism. Please
+send some feedback about making that work if you managed to do so!</p>
+
+<h2>Compiling a kernel</h2>
+
+<p>There's a <a href="http://ubuntuforums.org/showthread.php?t=1695746">very long thread on ubuntuforums</a> which has a lot of different
+patches. It was quite hard to figure out which ones were still relevant by
+kernel 3.1.1 for the particular setup I was trying to achieve, but I've got it
+(mostly) right for me at least.</p>
+
+<p>Since I want my laptop to be silent and have a long battery life, and don't
+care about 3D effects, the intel IGD is the perfect choice for me. So, from the
+<a href="http://www.ubuntu.com/download/ubuntu/alternative-download">alternate installer</a>, after chrooting in my freshly installed system, I did the
+following:</p>
+
+<ul>
+<li>install <a href="http://packages.debian.org/sid/linux-source-3.1">linux-source-3.1</a> from <a href="http://www.debian.org/releases/sid/">Debian Sid</a>;</li>
+<li>install <a href="http://packages.debian.org/wheezy/kernel-package">kernel-package</a>, <a href="http://packages.debian.org/wheezy/lib32ncurses5-dev">ncurses5-dev</a>, <a href="http://packages.debian.org/wheezy/git">git</a> &amp; dependencies;</li>
+<li>apply the <a href="https://github.com/fooblahblah/linux-mainline-efi-lvds/blob/782f01df3be5b06db1dd8a39e768e26956e852c7/lvds_dual_channel.patch">i915 dual channel lvds patch</a> to the source tree;</li>
+<li>apply the <a href="http://ubuntuforums.org/showpost.php?p=10694990&amp;postcount=259">apple_bl patch</a> to the source tree;</li>
+<li><p>ran <code>make menuconfig</code> and only left the following graphical drivers (important: they need to be compiled in, not as modules):</p>
+
+<pre><code>CONFIG_DRM_I915=y
+CONFIG_DRM_I915_KMS=y
+</code></pre></li>
+<li><p>compiled a kernel with </p>
+
+<pre><code>make-kpkg --initrd --jobs 8 --append_to_version +i915+lvds+bl kernel_image
+</code></pre></li>
+<li>installed this kernel using <code>dpkg</code></li>
+</ul>
+
+<p>You will find my <strong>.config</strong> file and the patches which I updated against kernel 3.1.1 underneath the <a href="http://dentifrice.poivron.org/laptops/macbookpro8,2/files/">files directory</a>. </p>
+
+<h2>Setting up grub-efi</h2>
+
+<p>Within the system's chroot and after having mounted /boot, install the
+<strong>grub-efi-amd64-bin</strong> package and do the following:</p>
+
+<ul>
+<li><p>mount Apple's EFI partition in <code>/boot/efi</code>:</p>
+
+<pre><code>mkdir /boot/efi
+mount /dev/sda1 /boot/efi
+</code></pre></li>
+<li><p>create the relevant dir :</p>
+
+<pre><code>mkdir /boot/efi/EFI/BOOT
+</code></pre></li>
+<li><p>compile the grub EFI binary:</p>
+
+<pre><code>cd /usr/lib/grub/x86_64-efi/
+grub-mkimage -O x86_64-efi -d . -o /boot/efi/EFI/BOOT/BOOTX64.EFI \
+-p "" part_gpt part_msdos ntfs ntfscomp hfsplus fat ext2 normal \
+      chain boot configfile linux multiboot
+</code></pre></li>
+<li><p>copy the relevant files to the EFI partition:</p>
+
+<pre><code> cp *.mod *.lst /boot/efi/EFI/BOOT/
+</code></pre></li>
+</ul>
+
+<p>You now have a grub EFI binary (named <strong>BOOTX64.EFI</strong> so the Apple EFI
+bootloader can see it - upon reboot press <em>left alt</em> to show the bootmenu) and
+its modules, and you only lack a <code>/boot/efi/EFI/BOOT/grub.cfg</code> configuration
+file containing the following (to be adapted to your setup):</p>
+
+<pre><code>menuentry 'Debian GNU/Linux, with Linux 3.1.1' {
+    insmod gzio
+    insmod part_gpt
+    insmod ext2
+    set gfxpayload=keep
+    # Switch gmux to IGD
+    outb 0x728 1
+    outb 0x710 2
+    outb 0x740 2
+    # Power down ATI
+    outb 0x750 0
+    set root='(hd0,gpt5)'
+    echo    'Loading Linux 3.1.1...'
+    linux   /vmlinuz-3.1.1+i915+lvds+bl root=/dev/mapper/system-root ro \
+        i915.lvds_channels=2 i915.modeset=1 i915.lvds_use_ssc=0 i915.i915_enable_rc6=1 \
+        acpi_backlight=vendor elevator=noop
+    echo    'Loading initial ramdisk ...'
+    initrd  /initrd.img-3.1.1+i915+lvds+bl
+}
+</code></pre>
+
+<p><strong>Note:</strong> the important lines are the <strong>outb</strong> lines which switch the Intel card on and the ATI card off, as well as the options on the <em>linux</em> line:</p>
+
+<ul>
+<li><strong>i915.lvds_channels=2 i915.modeset=1 i915.lvds_use_ssc=0</strong> are needed to get the intel graphics functionning correctly;</li>
+<li><strong>i915.i915_enable_rc6=1</strong> may not be needed anymore soon but related to a power consumption bug introduced in 3.x kernels, see <a href="https://bugs.launchpad.net/ubuntu/+source/linux/+bug/818830">https://bugs.launchpad.net/ubuntu/+source/linux/+bug/818830</a>;</li>
+<li><strong>acpi_backlight=vendor</strong> seems to make backlight adjustment work better (to be confirmed);</li>
+<li><strong>elevator=noop</strong> is only intesting when running off a SSD rather than a HDD;</li>
+</ul>
+
+<h2>Configuring</h2>
+
+<h3>Screen backlight</h3>
+
+<p>Thanks to the <a href="http://ubuntuforums.org/showpost.php?p=10694990&amp;postcount=259">apple_bl patch</a>, it is possible to adjust the screen backlight by passing the <em>use_gmux=1</em> option to the <em>apple_bl</em> driver. To make it permanent, create <code>/etc/modprobe.d/apple_bl.conf</code> with the following contents:</p>
+
+<pre><code>options apple_bl use_gmux=1
+</code></pre>
+
+<p>Note you can add <em>debug=1</em> if things don't work as they should and you'd like
+to try and figure out why.</p>
+
+<p>You can then set the backlight with the <a href="http://packages.debian.org/wheezy/xbacklight">xbacklight</a> program, or by fiddling
+directly with <code>/sys/class/backlight/acpi_video0/brightness</code>.</p>
+
+<p>I'd love to get <a href="http://www.technologeek.org/projects/pommed/">pommed</a> and the <strong>F1/F2</strong> keys to work though, but I have had
+no success so far. Please share you recipes if it works for you!</p>
+
+<h3>Keyboard backlight</h3>
+
+<p>Lits up when <a href="http://www.technologeek.org/projects/pommed/">pommed</a> starts, then shuts. Please contribute solutions. I see
+that in the logs:</p>
+
+<pre><code> [   14.117009] Registered led device: smc::kbd_backlight
+ [...]
+ [   22.356982] applesmc: light sensor data length set to 10
+ [   36.577601] applesmc: ALV0: read data fail
+</code></pre>
+
+<p>Note that apart from lighting up my keyboard for a few minutes, that's the only visible thing <a href="http://www.technologeek.org/projects/pommed/">pommed</a> does, unfortunately.</p>
+
+<h3>Special keys</h3>
+
+<p>No success using them to control backlights, sound, eject or any other thing.
+Any clue ? </p>
+
+<p>You can get the normal Function keys to work without having to press <em>Fn</em> at
+the same time by issuing the following as root:</p>
+
+<pre><code>echo 2 &gt; /sys/module/hid_apple/parameters/fnmode
+</code></pre>
+
+<h3>SD card reader</h3>
+
+<p>This one is a bit of a mystery to me, but I finally got it to work by
+enabling... Wi-Fi (thanks to <em>alvinwu</em> from <a href="https://forums.gentoo.org/viewtopic.php?p=6886016">the gentoo forums</a> who suggested
+that in the first place) ! In short, if you want Wi-Fi and the ability to read
+SD cards, chances are this will work out of the box for you, after having
+jumped through the Wi-Fi section below. If like me, you don't want Wi-Fi, read
+further. </p>
+
+<p>Unless the <strong>bcma</strong> and <strong>b43</strong> modules are compiled and loaded, <strong>IRQ17</strong> is
+shut early in the process. Here's what the logs vomit on startup:</p>
+
+<pre><code>[   20.627887] irq 17: nobody cared (try booting with the "irqpoll" option)
+[   20.627891] Pid: 0, comm: swapper Not tainted 3.1.1-patches #3
+[   20.627893] Call Trace:
+[   20.627895]  &lt;IRQ&gt;  [&lt;ffffffff81084b0a&gt;] ? __report_bad_irq+0x25/0xb5
+[   20.627904]  [&lt;ffffffff81084eda&gt;] ? note_interrupt+0x170/0x1f2
+[   20.627907]  [&lt;ffffffff81083700&gt;] ? handle_irq_event_percpu+0x163/0x182
+[   20.627911]  [&lt;ffffffff81007efd&gt;] ? read_tsc+0x5/0x14
+[   20.627915]  [&lt;ffffffff8105a643&gt;] ? timekeeping_get_ns+0xd/0x2a
+[   20.627917]  [&lt;ffffffff81083754&gt;] ? handle_irq_event+0x35/0x55
+[   20.627921]  [&lt;ffffffff810603b1&gt;] ? arch_local_irq_save+0x11/0x17
+[   20.627924]  [&lt;ffffffff810855c6&gt;] ? handle_fasteoi_irq+0x7c/0x9e
+[   20.627927]  [&lt;ffffffff81003ea9&gt;] ? handle_irq+0x1d/0x21
+[   20.627929]  [&lt;ffffffff81003bd9&gt;] ? do_IRQ+0x42/0x98
+[   20.627933]  [&lt;ffffffff81363bae&gt;] ? common_interrupt+0x6e/0x6e
+[   20.627934]  &lt;EOI&gt;  [&lt;ffffffff810561ae&gt;] ? enqueue_hrtimer+0x43/0x6a
+[   20.627942]  [&lt;ffffffff811c3124&gt;] ? intel_idle+0xd5/0xfd
+[   20.627944]  [&lt;ffffffff811c3103&gt;] ? intel_idle+0xb4/0xfd
+[   20.627948]  [&lt;ffffffff81295c8e&gt;] ? cpuidle_idle_call+0xf0/0x175
+[   20.627951]  [&lt;ffffffff81001251&gt;] ? cpu_idle+0x9d/0xe1
+[   20.627955]  [&lt;ffffffff816a5b39&gt;] ? start_kernel+0x3be/0x3ca
+[   20.627958]  [&lt;ffffffff816a5140&gt;] ? early_idt_handlers+0x140/0x140
+[   20.627962]  [&lt;ffffffff816a53a9&gt;] ? x86_64_start_kernel+0x105/0x113
+[   20.627963] handlers:
+[   20.627969] [&lt;ffffffffa0146727&gt;] sdhci_irq
+[   20.627971] Disabling IRQ #17
+</code></pre>
+
+<p>When blacklisting <strong>b43</strong> (I don't want wifi, sorry !), the mmc driver initializes as such:</p>
+
+<pre><code>[    3.641398] sdhci-pci 0000:02:00.1: found 1 slot(s)
+[    3.641421] sdhci-pci 0000:02:00.1: PCI INT B -&gt; GSI 17 (level, low) -&gt; IRQ 17
+[    3.641425] sdhci-pci 0000:02:00.1: Invalid iomem size. You may experience problems.
+[    3.641503] sdhci-pci 0000:02:00.1: setting latency timer to 64
+[    3.641508] sdhci [sdhci_add_host()]: mmc0: Auto-CMD23 available
+[    3.641527] mmc0: no vmmc regulator found
+[    3.641564] sdhci: =========== REGISTER DUMP (mmc0)===========
+[    3.641570] sdhci: Sys addr: 0x00000000 | Version:  0x00001502
+[    3.641576] sdhci: Blk size: 0x00000000 | Blk cnt:  0x00000000
+[    3.641582] sdhci: Argument: 0x00000000 | Trn mode: 0x00000000
+[    3.641588] sdhci: Present:  0x1ff80000 | Host ctl: 0x00000000
+[    3.641594] sdhci: Power:    0x00000000 | Blk gap:  0x00000000
+[    3.641600] sdhci: Wake-up:  0x00000000 | Clock:    0x00000000
+[    3.641606] sdhci: Timeout:  0x00000000 | Int stat: 0x00000000
+[    3.641612] sdhci: Int enab: 0x00ff0003 | Sig enab: 0x00ff0003
+[    3.641618] sdhci: AC12 err: 0x00000000 | Slot int: 0x00000000
+[    3.641624] sdhci: Caps:     0x176ec8b0 | Caps_1:   0x03002177
+[    3.641630] sdhci: Cmd:      0x00000000 | Max curr: 0x00000000
+[    3.641634] sdhci: Host ctl2: 0x00000000
+[    3.641640] sdhci: ADMA Err: 0x00000000 | ADMA Ptr: 0x00000000
+[    3.641642] sdhci: ===========================================
+[    3.641672] Registered led device: mmc0::
+[    3.641723] mmc0: clock 0Hz busmode 1 powermode 0 cs 0 Vdd 0 width 0 timing 0
+[    3.641781] mmc0: SDHCI controller on PCI [0000:02:00.1] using ADMA
+[    3.641874] mmc0: mmc_rescan_try_freq: trying to init card at 400000 Hz
+[    3.641878] mmc0: clock 0Hz busmode 1 powermode 1 cs 0 Vdd 21 width 0 timing 0
+[    3.652705] mmc0: clock 400000Hz busmode 1 powermode 2 cs 0 Vdd 21 width 0 timing 0
+</code></pre>
+
+<p>But then disables IRQ17 and issues the previously mentionned output in the
+logs. Loading the b43 module and {un,re}loading the <strong>sdhci</strong> &amp; <strong>sdhci_pci</strong>
+seems to do the trick.</p>
+
+<p><strong>Note:</strong> once b43 has been loaded, it can be safely unloaded for continued SD
+card operation. If you happen to be more clever and/or more patient than I am
+and feel like debugging further to get to the core of the problem, be my guest,
+as I'll be glad to know!</p>
+
+<h3>Suspend/resume</h3>
+
+<p>You need to install the following packages:</p>
+
+<ul>
+<li><a href="http://packages.debian.org/wheezy/pm-utils">pm-utils</a></li>
+<li><a href="http://packages.debian.org/wheezy/acpid">acpid</a> &amp; <a href="http://packages.debian.org/wheezy/acpi-support">acpi-support</a></li>
+<li><a href="http://packages.debian.org/wheezy/uswsusp">uswsusp</a></li>
+</ul>
+
+<p>To enable suspend-to-ram, uncomment the following in
+<code>/etc/default/acpi-support</code>:</p>
+
+<pre><code>LID_SLEEP=true
+</code></pre>
+
+<p>...and make sure there's a file in <code>/etc/pm/config.d/</code> with the following:</p>
+
+<pre><code>SLEEP_MODULE="uswsusp"
+SUSPEND_MODULES="b43 bcma"
+</code></pre>
+
+<p>When the laptop suspends to RAM and then comes back from sleep, the discrete graphics (ATI) is awoken. We need to shut it down again so the intel display can take over. To do so, you just need to compile <a href="http://ubuntuforums.org/showpost.php?p=11279555&amp;postcount=669">a little C program</a> and have pm-utils call it upon each wakeup:</p>
+
+<pre><code>sudo -s
+cd /root
+cat &gt; fixgpu.c &lt;&lt; EOF
+
+#include &lt;stdio.h&gt;
+#include &lt;sys/io.h&gt;
+
+#define PORT_SWITCH_DISPLAY 0x710
+#define PORT_SWITCH_SELECT 0x728
+#define PORT_SWITCH_DDC 0x740
+#define PORT_DISCRETE_POWER 0x750
+
+static int gmux_switch_to_igd()
+{
+    outb(1, PORT_SWITCH_SELECT);
+    outb(2, PORT_SWITCH_DISPLAY);
+    outb(2, PORT_SWITCH_DDC);
+    return 0;
+}
+
+static void mbp_gpu_power(int state)
+{
+    outb(state, PORT_DISCRETE_POWER);
+}
+
+int main(int argc, char **argv)
+{
+    if (iopl(3) &lt; 0) {
+        perror ("No IO permissions");
+        return 1;
+    }
+    mbp_gpu_power(0);
+    gmux_switch_to_igd();
+    return 0;
+}
+EOF
+
+gcc -O2 -o /usr/local/sbin/fixgpu fixgpu.c
+
+cat &gt; /etc/pm/sleep.d/10-fixgpu &lt;&lt; EOF
+#!/bin/sh
+#
+# reset the IGD
+case "${1}" in
+    hibernate|suspend)
+            ;;
+    resume|thaw)
+        /usr/local/sbin/fixgpu
+            ;;
+esac
+EOF
+
+chmod a+x /etc/pm/sleep.d/10-fixgpu
+</code></pre>
+
+<p><strong>Note:</strong> you need to make sure you have the <em>vbetool</em> package uninstalled,
+else it will eat 99% CPU resources and prevent your laptop from going back to
+sleep.</p>
+
+<h3>Touchpad</h3>
+
+<p>Works out of the box with the following section in <code>/etc/X11/xorg.conf</code>: </p>
+
+<pre><code>Section "InputClass"
+        MatchIsTouchpad "true"
+        MatchProduct "bcm5974"
+        Identifier "Multitouch Touchpad"
+        Driver "multitouch"
+    MatchDevicePath "/dev/input/event*"
+EndSection
+</code></pre>
+
+<p>For those who like the OS X <a href="https://en.wikipedia.org/wiki/Macos_x#Version_10.7:_.22Lion.22">Lion</a> <strong>"natural scrolling"</strong>, it is possible
+to emulate it with the <em>synaptics</em> driver (thanks to <em>Sascha Teske</em> for
+mentionning this to me). To do so, just issue the following:</p>
+
+<pre><code>xmodmap -e "pointer = 1 2 3 5 4 7 6 8 9 10 11 12"
+</code></pre>
+
+<p>If you like it, you can add the <code>"pointer = ..."</code> argument to your
+<code>.xmodmaprc</code>. For details on how this works, please refer to <a href="https://wiki.archlinux.org/index.php/Xmodmap#Reverse_Scrolling">the archwiki page
+about Xmodmap</a>. </p>
+
+<h3>Sound</h3>
+
+<p>Works out of the box when installing <a href="http://packages.debian.org/wheezy/alsa-base">alsa</a>.</p>
+
+<h3>Facetime HD camera</h3>
+
+<p>Untested (please contribute).</p>
+
+<h3>CD/DVD drive</h3>
+
+<p>Seems to work fine out of the box when <a href="https://help.ubuntu.com/community/UEFIBooting">EFI booting</a>. Burning CD's works, but I
+fucked two CDs up before getting one properly burnt. I suspect one has to
+reduce the speed, for writing at top speed (and it <em>is</em> fast indeed) seems to
+not do things right. It seems like OS X caps writing speed, so emulating it
+seems wise.</p>
+
+<p>I'll have to carry more tests to figure out the best combination. Feedback
+welcome.</p>
+
+<h3>USB</h3>
+
+<p>Seems to work fine out of the box. Haven't made an extensive use of USB devices though.</p>
+
+<h3>Ethernet</h3>
+
+<p>Gigabit Ethernet works out of the box, using the <em>tg3</em> driver.</p>
+
+<h3>Wi-Fi</h3>
+
+<p>Doesn't work out of the box. Not that I really care, but some people out there
+have made it work with passion. Well, I <em>didn't</em> care, until I realized I
+needed the working <em>b43</em> module loaded to get my SD card reader work (see
+above).</p>
+
+<p>So, to get Wi-Fi working, you need to patch your 3.0-3.1 kernel with some more
+patches (quite a few, actually), enable BCMA in the kernel, and <a href="http://linuxwireless.org/en/users/Drivers/b43#firmware">add firmware</a>
+to <code>/lib/firmware/b43</code>. You'll find the patch I used against 3.1.1, as well as
+the firmware binaries (which you should extract with <a href="http://packages.debian.org/sid/b43-fwcutter">b43-fwcutter</a>, possibly
+with some help from this <a href="https://help.ubuntu.com/community/WifiDocs/Driver/bcm43xx">bcm43xx reference page</a>) in my <a href="http://dentifrice.poivron.org/laptops/macbookpro8,2/files/">files directory</a>.</p>
+
+<p><em>Note:</em> I got the firmware from the <a href="http://ubuntuforums.org/showpost.php?p=11193926&amp;postcount=590">walkthrough</a> <em>Baughn</em> posted on
+ubuntuforums, as I couldn't be bothered to spend much time on this Wi-Fi thing.
+So I figured you may want to go down the easy firmware path too ;)</p>
+
+<p><strong><a href="http://kernel.org/">Linux</a> 3.2rc3</strong> (see <a href="http://ubuntuforums.org/showpost.php?p=11497569&amp;postcount=746">this post</a>) is supposed to bring out-of-the box
+support for the BCM4331 <strong>802.11a/b/g/n</strong>, but I haven't managed to get the
+intel display to work with it, unfortunately. Fixes highly welcome, for I don't intend to be stuck with kernel 3.1.x all my MBP82 life ! ;)</p>
+
+<h3>Bluetooth</h3>
+
+<p>Untested. Modules are loaded, but I blacklisted them. Please contribute.</p>
+
+<h2>TOFIX/TODO</h2>
+
+<p>Please feel free to help with the following:</p>
+
+<ul>
+<li><em>screen backlight control</em></li>
+<li><em>keyboard backlight control</em></li>
+<li>getting <em>kernel 3.2rc3 lvds dual channel</em> to work</li>
+<li><em>sdcard reader</em> explanation;</li>
+</ul>
+
+<p>Please contribute corrections/remarks/tips/solutions (by <strong>mailing</strong> them to
+<strong>fluor</strong> <em>at</em> <strong>poivron</strong> <em>dot</em> <strong>org</strong>) and fuel the bugreports, be they on
+<em>bugs.debian.org</em> or elsewhere, so things go forward!</p>
+<p style="text-align: right;"><em>mike dentifrice, 2011/12/03</em></p>
+
+</body>
+</html>
+
